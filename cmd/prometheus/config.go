@@ -247,7 +247,7 @@ func parse(args []string) error {
 			log.Errorf("Invalid command line arguments. Help: %s -h", os.Args[0])
 		}
 		if err == nil {
-			err = fmt.Errorf("Non flag argument on command line. \"%s\"", cfg.fs.Args()[0])
+			err = fmt.Errorf("Non-flag argument on command line: %q", cfg.fs.Args()[0])
 		}
 		return err
 	}
