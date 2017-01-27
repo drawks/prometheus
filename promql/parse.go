@@ -48,7 +48,7 @@ func (e *ParseErr) Error() string {
 	return fmt.Sprintf("parse error at line %d, char %d: %s", e.Line, e.Pos, e.Err)
 }
 
-// ParseStmts parses the input and returns the resulting statements or any occuring error.
+// ParseStmts parses the input and returns the resulting statements or any occurring error.
 func ParseStmts(input string) (Statements, error) {
 	p := newParser(input)
 
@@ -673,7 +673,10 @@ func (p *parser) labels() model.LabelNames {
 	labels := model.LabelNames{}
 	if p.peek().typ != itemRightParen {
 		for {
-			id := p.expect(itemIdentifier, ctx)
+			id := p.next()
+			if !isLabel(id.val) {
+				p.errorf("unexpected %s in %s, expected label", id.desc(), ctx)
+			}
 			labels = append(labels, model.LabelName(id.val))
 
 			if p.peek().typ != itemComma {
@@ -953,11 +956,11 @@ func (p *parser) vectorSelector(name string) *VectorSelector {
 			}
 		}
 		// Set name label matching.
-		matchers = append(matchers, &metric.LabelMatcher{
-			Type:  metric.Equal,
-			Name:  model.MetricNameLabel,
-			Value: model.LabelValue(name),
-		})
+		m, err := metric.NewLabelMatcher(metric.Equal, model.MetricNameLabel, model.LabelValue(name))
+		if err != nil {
+			panic(err) // Must not happen with metric.Equal.
+		}
+		matchers = append(matchers, m)
 	}
 
 	if len(matchers) == 0 {
@@ -967,14 +970,7 @@ func (p *parser) vectorSelector(name string) *VectorSelector {
 	// implicit selection of all metrics (e.g. by a typo).
 	notEmpty := false
 	for _, lm := range matchers {
-		// Matching changes the inner state of the regex and causes reflect.DeepEqual
-		// to return false, which break tests.
-		// Thus, we create a new label matcher for this testing.
-		lm, err := metric.NewLabelMatcher(lm.Type, lm.Name, lm.Value)
-		if err != nil {
-			p.error(err)
-		}
-		if !lm.Match("") {
+		if !lm.MatchesEmptyString() {
 			notEmpty = true
 			break
 		}
@@ -994,7 +990,7 @@ func (p *parser) vectorSelector(name string) *VectorSelector {
 func (p *parser) expectType(node Node, want model.ValueType, context string) {
 	t := p.checkType(node)
 	if t != want {
-		p.errorf("expected type %s in %s, got %s", want, context, t)
+		p.errorf("expected type %s in %s, got %s", documentedType(want), context, documentedType(t))
 	}
 }
 
@@ -1028,20 +1024,20 @@ func (p *parser) checkType(node Node) (typ model.ValueType) {
 	case *EvalStmt:
 		ty := p.checkType(n.Expr)
 		if ty == model.ValNone {
-			p.errorf("evaluation statement must have a valid expression type but got %s", ty)
+			p.errorf("evaluation statement must have a valid expression type but got %s", documentedType(ty))
 		}
 
 	case *RecordStmt:
 		ty := p.checkType(n.Expr)
 		if ty != model.ValVector && ty != model.ValScalar {
-			p.errorf("record statement must have a valid expression of type vector or scalar but got %s", ty)
+			p.errorf("record statement must have a valid expression of type instant vector or scalar but got %s", documentedType(ty))
 		}
 
 	case Expressions:
 		for _, e := range n {
 			ty := p.checkType(e)
 			if ty == model.ValNone {
-				p.errorf("expression must have a valid expression type but got %s", ty)
+				p.errorf("expression must have a valid expression type but got %s", documentedType(ty))
 			}
 		}
 	case *AggregateExpr:
@@ -1049,7 +1045,7 @@ func (p *parser) checkType(node Node) (typ model.ValueType) {
 			p.errorf("aggregation operator expected in aggregation expression but got %q", n.Op)
 		}
 		p.expectType(n.Expr, model.ValVector, "aggregation expression")
-		if n.Op == itemTopK || n.Op == itemBottomK {
+		if n.Op == itemTopK || n.Op == itemBottomK || n.Op == itemQuantile {
 			p.expectType(n.Param, model.ValScalar, "aggregation parameter")
 		}
 		if n.Op == itemCountValues {
@@ -1064,12 +1060,12 @@ func (p *parser) checkType(node Node) (typ model.ValueType) {
 			p.errorf("binary expression does not support operator %q", n.Op)
 		}
 		if (lt != model.ValScalar && lt != model.ValVector) || (rt != model.ValScalar && rt != model.ValVector) {
-			p.errorf("binary expression must contain only scalar and vector types")
+			p.errorf("binary expression must contain only scalar and instant vector types")
 		}
 
 		if (lt != model.ValVector || rt != model.ValVector) && n.VectorMatching != nil {
 			if len(n.VectorMatching.MatchingLabels) > 0 {
-				p.errorf("vector matching only allowed between vectors")
+				p.errorf("vector matching only allowed between instant vectors")
 			}
 			n.VectorMatching = nil
 		} else {
@@ -1108,7 +1104,7 @@ func (p *parser) checkType(node Node) (typ model.ValueType) {
 			p.errorf("only + and - operators allowed for unary expressions")
 		}
 		if t := p.checkType(n.Expr); t != model.ValScalar && t != model.ValVector {
-			p.errorf("unary expression only allowed on expressions of type scalar or vector, got %q", t)
+			p.errorf("unary expression only allowed on expressions of type scalar or instant vector, got %q", documentedType(t))
 		}
 
 	case *NumberLiteral, *MatrixSelector, *StringLiteral, *VectorSelector:

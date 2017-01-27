@@ -3,11 +3,14 @@
 [![CircleCI](https://circleci.com/gh/prometheus/prometheus/tree/master.svg?style=shield)][circleci]
 [![Docker Repository on Quay](https://quay.io/repository/prometheus/prometheus/status)][quay]
 [![Docker Pulls](https://img.shields.io/docker/pulls/prom/prometheus.svg?maxAge=604800)][hub]
+[![Go Report Card](https://goreportcard.com/badge/github.com/prometheus/prometheus)](https://goreportcard.com/report/github.com/prometheus/prometheus)
+[![Code Climate](https://codeclimate.com/github/prometheus/prometheus/badges/gpa.svg)](https://codeclimate.com/github/prometheus/prometheus)
+[![Issue Count](https://codeclimate.com/github/prometheus/prometheus/badges/issue_count.svg)](https://codeclimate.com/github/prometheus/prometheus)
 
 Visit [prometheus.io](https://prometheus.io) for the full documentation,
 examples and guides.
 
-Prometheus is a systems and service monitoring system. It collects metrics
+Prometheus, a [Cloud Native Computing Foundation](https://cncf.io/) project, is a systems and service monitoring system. It collects metrics
 from configured targets at given intervals, evaluates rule expressions,
 displays the results, and can trigger alerts if some condition is observed
 to be true.
@@ -34,17 +37,17 @@ There are various ways of installing Prometheus.
 ### Precompiled binaries
 
 Precompiled binaries for released versions are available in the
-[*releases* section](https://github.com/prometheus/prometheus/releases)
-of the GitHub repository. Using the latest production release binary
-is the recommended way of installing Prometheus. 
-See the [Installing](https://prometheus.io/docs/introduction/install/) 
+[*download* section](https://prometheus.io/download/)
+on [prometheus.io](https://prometheus.io). Using the latest production release binary
+is the recommended way of installing Prometheus.
+See the [Installing](https://prometheus.io/docs/introduction/install/)
 chapter in the documentation for all the details.
 
 Debian packages [are available](https://packages.debian.org/sid/net/prometheus).
 
-### Container images
+### Docker images
 
-Container images are available on [Quay.io](https://quay.io/organization/prometheus).
+Docker images are available on [Quay.io](https://quay.io/repository/prometheus/prometheus).
 
 ### Building from source
 
@@ -81,15 +84,15 @@ The Makefile provides several targets:
 
   * The source code is periodically indexed: [Prometheus Core](http://godoc.org/github.com/prometheus/prometheus).
   * You will find a Travis CI configuration in `.travis.yml`.
-  * All of the core developers are accessible via the [Prometheus Developers Mailinglist](https://groups.google.com/forum/?fromgroups#!forum/prometheus-developers) and the `#prometheus` channel on `irc.freenode.net`.
+  * See the [Community page](https://prometheus.io/community) for how to reach the Prometheus developers and users on various communication channels.
 
 ## Contributing
 
-Refer to [CONTRIBUTING.md](CONTRIBUTING.md)
+Refer to [CONTRIBUTING.md](https://github.com/prometheus/prometheus/blob/master/CONTRIBUTING.md)
 
 ## License
 
-Apache License 2.0, see [LICENSE](LICENSE).
+Apache License 2.0, see [LICENSE](https://github.com/prometheus/prometheus/blob/master/LICENSE).
 
 
 [travis]: https://travis-ci.org/prometheus/prometheus

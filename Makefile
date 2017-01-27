@@ -37,7 +37,7 @@ check_license:
 	@./scripts/check_license.sh
 
 test:
-	@echo ">> running tests"
+	@echo ">> running short tests"
 	@$(GO) test -short $(pkgs)
 
 format:
@@ -64,8 +64,10 @@ assets:
 	@echo ">> writing assets"
 	@$(GO) get -u github.com/jteeuwen/go-bindata/...
 	@go-bindata $(bindata_flags) -pkg ui -o web/ui/bindata.go -ignore '(.*\.map|bootstrap\.js|bootstrap-theme\.css|bootstrap\.css)'  web/ui/templates/... web/ui/static/...
+	@$(GO) fmt ./web/ui
 
 promu:
+	@echo ">> fetching promu"
 	@GOOS=$(shell uname -s | tr A-Z a-z) \
 	GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))) \
 	$(GO) get -u github.com/prometheus/promu

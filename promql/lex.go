@@ -59,7 +59,7 @@ func (i itemType) isAggregator() bool { return i > aggregatorsStart && i < aggre
 // isAggregator returns true if the item is an aggregator that takes a parameter.
 // Returns false otherwise
 func (i itemType) isAggregatorWithParam() bool {
-	return i == itemTopK || i == itemBottomK || i == itemCountValues
+	return i == itemTopK || i == itemBottomK || i == itemCountValues || i == itemQuantile
 }
 
 // isKeyword returns true if the item corresponds to a keyword.
@@ -177,6 +177,7 @@ const (
 	itemTopK
 	itemBottomK
 	itemCountValues
+	itemQuantile
 	aggregatorsEnd
 
 	keywordsStart
@@ -215,6 +216,7 @@ var key = map[string]itemType{
 	"topk":         itemTopK,
 	"bottomk":      itemBottomK,
 	"count_values": itemCountValues,
+	"quantile":     itemQuantile,
 
 	// Keywords.
 	"alert":       itemAlert,
@@ -886,4 +888,17 @@ func isDigit(r rune) bool {
 // isAlpha reports whether r is an alphabetic or underscore.
 func isAlpha(r rune) bool {
 	return r == '_' || ('a' <= r && r <= 'z') || ('A' <= r && r <= 'Z')
+}
+
+// isLabel reports whether the string can be used as label.
+func isLabel(s string) bool {
+	if len(s) == 0 || !isAlpha(rune(s[0])) {
+		return false
+	}
+	for _, c := range s[1:] {
+		if !isAlphaNumeric(c) {
+			return false
+		}
+	}
+	return true
 }

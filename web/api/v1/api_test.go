@@ -30,7 +30,20 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/prometheus/prometheus/promql"
+	"github.com/prometheus/prometheus/retrieval"
 )
+
+type targetRetrieverFunc func() []*retrieval.Target
+
+func (f targetRetrieverFunc) Targets() []*retrieval.Target {
+	return f()
+}
+
+type alertmanagerRetrieverFunc func() []string
+
+func (f alertmanagerRetrieverFunc) Alertmanagers() []string {
+	return f()
+}
 
 func TestEndpoints(t *testing.T) {
 	suite, err := promql.NewTest(t, `
@@ -49,10 +62,31 @@ func TestEndpoints(t *testing.T) {
 	}
 
 	now := model.Now()
+
+	tr := targetRetrieverFunc(func() []*retrieval.Target {
+		return []*retrieval.Target{
+			retrieval.NewTarget(
+				model.LabelSet{
+					model.SchemeLabel:      "http",
+					model.AddressLabel:     "example.com:8080",
+					model.MetricsPathLabel: "/metrics",
+				},
+				model.LabelSet{},
+				url.Values{},
+			),
+		}
+	})
+
+	ar := alertmanagerRetrieverFunc(func() []string {
+		return []string{"http://alertmanager.example.com:8080/api/v1/alerts"}
+	})
+
 	api := &API{
-		Storage:     suite.Storage(),
-		QueryEngine: suite.QueryEngine(),
-		now:         func() model.Time { return now },
+		Storage:               suite.Storage(),
+		QueryEngine:           suite.QueryEngine(),
+		targetRetriever:       tr,
+		alertmanagerRetriever: ar,
+		now: func() model.Time { return now },
 	}
 
 	start := model.Time(0)
@@ -183,6 +217,28 @@ func TestEndpoints(t *testing.T) {
 				"query": []string{"invalid][query"},
 				"start": []string{"0"},
 				"end":   []string{"100"},
+				"step":  []string{"1"},
+			},
+			errType: errorBadData,
+		},
+		// Invalid step
+		{
+			endpoint: api.queryRange,
+			query: url.Values{
+				"query": []string{"time()"},
+				"start": []string{"1"},
+				"end":   []string{"2"},
+				"step":  []string{"0"},
+			},
+			errType: errorBadData,
+		},
+		// Start after end
+		{
+			endpoint: api.queryRange,
+			query: url.Values{
+				"query": []string{"time()"},
+				"start": []string{"2"},
+				"end":   []string{"1"},
 				"step":  []string{"1"},
 			},
 			errType: errorBadData,
@@ -382,6 +438,27 @@ func TestEndpoints(t *testing.T) {
 			response: struct {
 				NumDeleted int `json:"numDeleted"`
 			}{2},
+		}, {
+			endpoint: api.targets,
+			response: &TargetDiscovery{
+				ActiveTargets: []*Target{
+					&Target{
+						DiscoveredLabels: model.LabelSet{},
+						Labels:           model.LabelSet{},
+						ScrapeURL:        "http://example.com:8080/metrics",
+						Health:           "unknown",
+					},
+				},
+			},
+		}, {
+			endpoint: api.alertmanagers,
+			response: &AlertmanagerDiscovery{
+				ActiveAlertmanagers: []*AlertmanagerTarget{
+					&AlertmanagerTarget{
+						URL: "http://alertmanager.example.com:8080/api/v1/alerts",
+					},
+				},
+			},
 		},
 	}
 
@@ -598,7 +675,7 @@ func TestParseDuration(t *testing.T) {
 }
 
 func TestOptionsMethod(t *testing.T) {
-	r := route.New()
+	r := route.New(nil)
 	api := &API{}
 	api.Register(r)
 
